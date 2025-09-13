@@ -5,8 +5,14 @@ import XLSX from 'xlsx';
 import type { Request, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { StatusCodes } from 'http-status-codes';
+import multer from 'multer';
 
-export const uploadBudgetData = async (req: Request, res: Response) => {
+// Add this interface
+interface RequestWithFile extends Request {
+  file?: Express.Multer.File;
+}
+
+export const uploadBudgetData = async (req: RequestWithFile, res: Response) => {
   if (!req.file) {
     return res.status(StatusCodes.BAD_REQUEST).json({ message: 'File is required' });
   }
@@ -94,7 +100,7 @@ export const uploadBudgetData = async (req: Request, res: Response) => {
             data: {
               amount: parseFloat(row.amount),
               description: row.description || null,
-              
+              // Fix: Remove the trailing comma and empty line
               vendorId: vendor.id,
             },
           });

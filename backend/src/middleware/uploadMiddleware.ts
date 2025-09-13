@@ -2,6 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import sanitize from 'sanitize-filename';
+import type { Request } from 'express';
 
 const uploadPath = path.join('uploads', 'budgets');
 
@@ -12,7 +13,8 @@ if (!fs.existsSync(uploadPath)) {
 
 const allowedExts = ['.csv', '.xls', '.xlsx'];
 
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+// Fix: Change req: any to req: Request
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const ext = path.extname(file.originalname).toLowerCase();
   if (!allowedExts.includes(ext)) {
     return cb(new Error('Only CSV and Excel files are allowed'));
@@ -20,11 +22,12 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
   cb(null, true);
 };
 
+// Fix: Add proper types for multer callbacks
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
     cb(null, uploadPath);
   },
-  filename: (req, file, cb) => {
+  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
     const ext = path.extname(file.originalname);
     const baseName = sanitize(path.basename(file.originalname, ext));
     cb(null, `${baseName}-${Date.now()}${ext}`);
@@ -35,6 +38,6 @@ export const uploadBudgetFile = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024,
+    fileSize: 10 * 1024 * 1024, // 10MB
   },
 });
