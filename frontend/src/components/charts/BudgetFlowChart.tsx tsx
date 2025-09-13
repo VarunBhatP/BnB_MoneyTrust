@@ -1,0 +1,125 @@
+import React from 'react';
+import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
+import { BudgetFlowData } from '../../types';
+
+interface BudgetFlowChartProps {
+  data: BudgetFlowData;
+  level: 'department' | 'project' | 'vendor';
+}
+
+const BudgetFlowChart: React.FC<BudgetFlowChartProps> = ({ data, level }) => {
+  // Transform data based on selected level
+  const transformData = () => {
+    if (!data) return { nodes: [], links: [] };
+
+    const nodes: any[] = [];
+    const links: any[] = [];
+
+    // Add budget as root node
+    nodes.push({
+      id: 'budget',
+      name: data.budget.title,
+      category: 'budget'
+    });
+
+    if (level === 'department') {
+      // Department level flow
+      data.departments.forEach(dept => {
+        nodes.push({
+          id: dept.id,
+          name: dept.name,
+          category: 'department'
+        });
+        
+        links.push({
+          source: 'budget',
+          target: dept.id,
+          value: dept.allocatedAmount
+        });
+      });
+    } else if (level === 'project') {
+      // Project level flow
+      data.departments.forEach(dept => {
+        nodes.push({
+          id: dept.id,
+          name: dept.name,
+          category: 'department'
+        });
+        
+        links.push({
+          source: 'budget',
+          target: dept.id,
+          value: dept.allocatedAmount
+        });
+
+        const deptProjects = data.projects.filter(p => p.departmentId === dept.id);
+        deptProjects.forEach(project => {
+          nodes.push({
+            id: project.id,
+            name: project.name,
+            category: 'project'
+          });
+          
+          links.push({
+            source: dept.id,
+            target: project.id,
+            value: project.allocatedAmount
+          });
+        });
+      });
+    }
+
+    return { nodes, links };
+  };
+
+  const sankeyData = transformData();
+
+  return (
+    <div className="budget-flow-chart">
+      <div className="chart-header">
+        <h3>Budget Flow - {level.charAt(0).toUpperCase() + level.slice(1)} Level</h3>
+        <div className="chart-legend">
+          <div className="legend-item">
+            <div className="legend-color budget"></div>
+            <span>Budget</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-color department"></div>
+            <span>Department</span>
+          </div>
+          {level !== 'department' && (
+            <div className="legend-item">
+              <div className="legend-color project"></div>
+              <span>Project</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <ResponsiveContainer width="100%" height={600}>
+        <Sankey
+          data={sankeyData}
+          nodePadding={10}
+          margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+        >
+          <Tooltip
+            content={({ active, payload }) => {
+              if (active && payload && payload[0]) {
+                const data = payload[0].payload;
+                return (
+                  <div className="flow-tooltip">
+                    <p><strong>{data.name}</strong></p>
+                    <p>Amount: ${data.value?.toLocaleString()}</p>
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+        </Sankey>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+export default BudgetFlowChart;

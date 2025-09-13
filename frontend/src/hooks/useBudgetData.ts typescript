@@ -1,0 +1,28 @@
+import { useQuery } from '@tanstack/react-query';
+import { apiService } from '../services/api';
+import { BudgetFlowData } from '../types';
+
+export const useBudgetData = (institutionId?: string) => {
+  return useQuery({
+    queryKey: ['budgetData', institutionId],
+    queryFn: () => apiService.getBudgetData(institutionId),
+    enabled: !!institutionId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+export const useDashboardData = () => {
+  return useQuery({
+    queryKey: ['dashboardData'],
+    queryFn: () => apiService.getDashboardData(),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+};
+
+export const useSearchData = (filters: any) => {
+  return useQuery({
+    queryKey: ['searchData', filters],
+    queryFn: () => apiService.searchTransactions(filters),
+    enabled: Object.keys(filters).length > 0,
+  });
+};
