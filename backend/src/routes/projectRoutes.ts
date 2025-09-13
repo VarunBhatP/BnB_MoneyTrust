@@ -1,20 +1,31 @@
-import { Router } from 'express';
-import {
-  createProject,
-  getAllProjects,
-  getProjectById,
-  updateProject,
-  deleteProject,
-} from '../controllers/projectController.js';
-import {authenticateToken} from '../middleware/authMiddleware.js'
+import express from 'express';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
+const router = express.Router();
 
-const router:Router = Router();
+// Protect all project routes
+router.use(authMiddleware);
 
-router.post('/', authenticateToken,createProject);
-router.get('/', authenticateToken,getAllProjects);
-router.get('/:id', authenticateToken,getProjectById);
-router.put('/:id', authenticateToken,updateProject);
-router.delete('/:id', authenticateToken,deleteProject);
+// Sample project data
+const sampleProjects = [
+  { id: '1', name: 'School Infrastructure', departmentId: '1' },
+  { id: '2', name: 'Medical Equipment', departmentId: '2' },
+  { id: '3', name: 'Road Construction', departmentId: '3' },
+];
+
+router.get('/', (req, res) => {
+  res.json(sampleProjects);
+});
+
+router.post('/', (req, res) => {
+  const { name, departmentId } = req.body;
+  const newProject = {
+    id: (sampleProjects.length + 1).toString(),
+    name,
+    departmentId
+  };
+  sampleProjects.push(newProject);
+  res.status(201).json(newProject);
+});
 
 export default router;

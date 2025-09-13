@@ -33,10 +33,13 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
       });
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Auth middleware error:', error);
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       message: 'Authentication error'
     });
   }
 };
+
+// Export the same function with different name for compatibility
+export const authenticateToken = authMiddleware;

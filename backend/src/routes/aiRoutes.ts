@@ -1,11 +1,14 @@
-import { Router } from 'express';
-import { authenticateToken } from '../middleware/authMiddleware.js';
-import { proxyBudgetQuery, proxyAnalyzeTransaction, getAIHealth } from '../controllers/aiController.js';
+import express from 'express';
+import { authMiddleware } from '../middleware/authMiddleware.js';
+import { budgetQuery, analyzeTransaction, getAIHealth } from '../controllers/aiController.js';
 
-const router:Router = Router();
+const router = express.Router();
 
-router.post('/budget-query', authenticateToken, proxyBudgetQuery);
-router.post('/analyze-transaction', authenticateToken, proxyAnalyzeTransaction);
+// Protect all AI routes
+router.use(authMiddleware);
+
 router.get('/health', getAIHealth);
+router.post('/budget-query', budgetQuery);
+router.post('/analyze-transaction', analyzeTransaction);
 
 export default router;

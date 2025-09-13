@@ -34,16 +34,16 @@ app.get('/', (req, res) => {
     message: 'BnB MoneyTrust Backend API',
     status: 'running',
     timestamp: new Date().toISOString(),
-    endpoints: {
-      auth: '/api/v1/auth',
-      ai: '/api/v1/ai',
-      transactions: '/api/v1/transactions',
-      budgets: '/api/v1/budgets',
-      vendors: '/api/v1/vendors',
-      departments: '/api/v1/departments',
-      reports: '/api/v1/reports',
-      analytics: '/api/v1/analytics'
-    }
+    endpoints: [
+      '/api/v1/auth',
+      '/api/v1/ai',
+      '/api/v1/transactions',
+      '/api/v1/budgets',
+      '/api/v1/vendors',
+      '/api/v1/departments',
+      '/api/v1/reports',
+      '/api/v1/analytics'
+    ]
   });
 });
 
@@ -67,15 +67,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log('Available endpoints:');
-  console.log('- Auth: /api/v1/auth');
-  console.log('- AI: /api/v1/ai');
-  console.log('- Transactions: /api/v1/transactions');
-  console.log('- Budgets: /api/v1/budgets');
-  console.log('- Vendors: /api/v1/vendors');
-  console.log('- Departments: /api/v1/departments');
-  console.log('- Reports: /api/v1/reports');
-  console.log('- Analytics: /api/v1/analytics');
 });
 
 export default app;
