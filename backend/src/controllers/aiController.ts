@@ -19,10 +19,10 @@ export const proxyBudgetQuery = async (req: Request, res: Response) => {
 
 export const proxyAnalyzeTransaction = async (req: Request, res: Response) => {
   try {
-    const { transactions } = req.body;
-    if (!Array.isArray(transactions) || transactions.length === 0) {
+    if (!req.body || !Array.isArray(req.body.transactions) || req.body.transactions.length === 0) {
       return res.status(StatusCodes.BAD_REQUEST).json({ message: 'transactions array is required' });
     }
+    const { transactions } = req.body;
 
     const result = await aiService.analyzeTransactions({ transactions });
     return res.json(result);
@@ -31,6 +31,7 @@ export const proxyAnalyzeTransaction = async (req: Request, res: Response) => {
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: error.message || 'AI service error' });
   }
 };
+
 
 export const getAIHealth = async (_req: Request, res: Response) => {
   try {

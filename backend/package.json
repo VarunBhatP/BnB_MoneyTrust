@@ -3,6 +3,8 @@
     "@prisma/client": "^6.16.1",
     "@types/axios": "^0.14.4",
     "@types/http-status-codes": "^1.2.0",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "axios": "^1.12.1",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
@@ -15,6 +17,8 @@
     "pnpm": "^10.16.0",
     "prisma": "^6.16.1",
     "sanitize-filename": "^1.6.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "ws": "^8.18.3",
     "xlsx": "^0.18.5"
   },

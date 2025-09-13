@@ -5,6 +5,8 @@ import {
   getBudgetById,
   updateBudget,
   deleteBudget,
+  addFeedback,
+getFeedback
 } from '../controllers/budgetController.js';
 import {authenticateToken} from '../middleware/authMiddleware.js'
 
@@ -15,5 +17,7 @@ router.get('/', authenticateToken,getAllBudgets);
 router.get('/:id', authenticateToken,getBudgetById);
 router.put('/:id', authenticateToken,updateBudget);
 router.delete('/:id', authenticateToken,deleteBudget);
+router.post('/:id/feedback', authenticateToken, addFeedback);
+router.get('/:id/feedback', getFeedback);
 
 export default router;

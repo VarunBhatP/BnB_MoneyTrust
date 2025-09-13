@@ -7,6 +7,18 @@ interface JwtPayload{
     userId:number;
 }
 
+export const authorizeRoles = (...allowedRoles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const userRole = (req as any).user?.role; // Assuming user is attached to req after auth
+
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      return res.status(403).json({ message: 'You do not have permission to perform this action' });
+    }
+
+    next();
+  };
+};
+
 export const authenticateToken= (req:Request, res:Response,next:NextFunction)=>{
     const token = req.cookies.token || (req.headers.authorization && req.headers.authorization.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1]:null);
     if(!token){

@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 
+
 // imports
 import authRoutes from './routes/authRoutes.js';
 import budgetRoutes from './routes/budgetRoutes.js';
@@ -19,6 +20,8 @@ const app = express();
 
 app.use(cookieParser());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 
 // routes
 app.use('/api/v1/auth', authRoutes);
@@ -28,7 +31,12 @@ app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/vendors', vendorRoutes);
 app.use('/api/v1/transactions', transactionRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
-app.use('/api/v1/ai', aiRoutes); // added AI route
+app.use('/api/v1/ai', aiRoutes); 
+
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ message: 'Internal server error' });
+});
 
 const PORT = process.env.PORT || 3000;
 
@@ -62,6 +70,7 @@ function broadcast(data: any) {
 }
 
 export { broadcast };
+
 
 server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
