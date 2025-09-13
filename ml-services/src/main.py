@@ -69,3 +69,15 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
+
+# Add these imports at the top (keep your existing imports)
+from config.settings import settings  # Add this line
+
+# Replace your app creation with this:
+app = FastAPI(
+    title=settings.API_TITLE,  # Uses config
+    description="AI-powered anomaly detection and voice processing",
+    version=settings.API_VERSION  # Uses config
+)
+
+# Keep everything else the same!

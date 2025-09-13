@@ -1,39 +1,27 @@
 import os
-from typing import Optional
-from pydantic_settings import BaseSettings
+from dotenv import load_dotenv
 
-class Settings(BaseSettings):
-    """Application settings and configuration"""
+# Load environment variables
+load_dotenv()
+
+class Settings:
+    """Application settings with environment variables"""
     
     # API Settings
-    API_TITLE: str = "Financial Transparency AI/ML Services"
-    API_VERSION: str = "1.0.0"
-    API_HOST: str = "0.0.0.0"
-    API_PORT: int = 8001
+    API_TITLE = os.getenv("API_TITLE", "Financial Transparency AI/ML Services")
+    API_VERSION = os.getenv("API_VERSION", "1.0.0")
+    API_HOST = os.getenv("API_HOST", "0.0.0.0")
+    API_PORT = int(os.getenv("API_PORT", 8001))
     
     # ML Model Settings
-    ANOMALY_CONTAMINATION: float = 0.1
-    ANOMALY_RANDOM_STATE: int = 42
-    MODEL_SAVE_PATH: str = "models/"
-    
-    # Data Settings
-    SAMPLE_DATA_PATH: str = "data/sample_budgets.json"
-    MAX_TRANSACTIONS_PER_REQUEST: int = 1000
-    
-    # Voice Processing Settings
-    VOICE_CONFIDENCE_THRESHOLD: float = 0.7
-    SUPPORTED_LANGUAGES: list = ["en-US", "en-GB"]
+    ANOMALY_CONTAMINATION = float(os.getenv("ANOMALY_CONTAMINATION", 0.1))
+    ANOMALY_RANDOM_STATE = int(os.getenv("ANOMALY_RANDOM_STATE", 42))
     
     # Environment
-    ENVIRONMENT: str = "development"
-    DEBUG: bool = True
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+    DEBUG = os.getenv("DEBUG", "True").lower() == "true"
     
     # CORS Settings
-    ALLOWED_ORIGINS: list = ["*"]
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
-# Create global settings instance
 settings = Settings()
