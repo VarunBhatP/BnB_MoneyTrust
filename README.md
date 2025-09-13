@@ -2,7 +2,7 @@
 
 AI-powered platform for **financial anomaly detection** and **natural language insights**.  
 
-🔗 **Live Demo:** [API Docs](https://bnb-ai-ml-services.onrender.com/docs)  
+🔗 **Live Demo:** [API Docs](https://bnb-ai-ml-service.onrender.com/docs)  
 
 ---
 
