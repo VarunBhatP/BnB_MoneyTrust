@@ -13,8 +13,21 @@ if (!fs.existsSync(uploadPath)) {
 
 const allowedExts = ['.csv', '.xls', '.xlsx'];
 
-// Fix: Change req: any to req: Request
-const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+// Define multer file interface manually
+interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  destination: string;
+  filename: string;
+  path: string;
+  buffer: Buffer;
+}
+
+// Fix: Use our custom interface instead of Express.Multer
+const fileFilter = (req: Request, file: MulterFile, cb: multer.FileFilterCallback) => {
   const ext = path.extname(file.originalname).toLowerCase();
   if (!allowedExts.includes(ext)) {
     return cb(new Error('Only CSV and Excel files are allowed'));
@@ -22,12 +35,11 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
   cb(null, true);
 };
 
-// Fix: Add proper types for multer callbacks
 const storage = multer.diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
+  destination: (req: Request, file: MulterFile, cb: (error: Error | null, destination: string) => void) => {
     cb(null, uploadPath);
   },
-  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
+  filename: (req: Request, file: MulterFile, cb: (error: Error | null, filename: string) => void) => {
     const ext = path.extname(file.originalname);
     const baseName = sanitize(path.basename(file.originalname, ext));
     cb(null, `${baseName}-${Date.now()}${ext}`);

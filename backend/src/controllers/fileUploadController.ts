@@ -7,9 +7,21 @@ import { prisma } from '../utils/prisma.js';
 import { StatusCodes } from 'http-status-codes';
 import multer from 'multer';
 
-// Add this interface
-interface RequestWithFile extends Request {
-  file?: Express.Multer.File;
+interface RequestWithFile {
+  file?: {
+    fieldname: string;
+    originalname: string;
+    encoding: string;
+    mimetype: string;
+    size: number;
+    destination: string;
+    filename: string;
+    path: string;
+    buffer: Buffer;
+  };
+  body: any;
+  params: any;
+  query: any;
 }
 
 export const uploadBudgetData = async (req: RequestWithFile, res: Response) => {
