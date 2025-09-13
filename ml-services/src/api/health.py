@@ -1,17 +1,14 @@
 from fastapi import APIRouter
 import time
-import sys
-import os
-
-# Add parent directory to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from main import get_ml_models
 
 router = APIRouter()
 
 @router.get("/")
 async def health_check():
     """Basic health check"""
+    # Import here to avoid circular import
+    from main import get_ml_models
+    
     models = get_ml_models()
     
     return {
@@ -24,6 +21,9 @@ async def health_check():
 @router.get("/models")
 async def model_status():
     """Check status of loaded ML models"""
+    # Import here to avoid circular import
+    from main import get_ml_models
+    
     models = get_ml_models()
     
     model_status = {}

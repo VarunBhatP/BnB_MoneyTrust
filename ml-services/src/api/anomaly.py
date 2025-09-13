@@ -3,12 +3,6 @@ from pydantic import BaseModel
 from typing import List, Optional
 import pandas as pd
 import numpy as np
-import sys
-import os
-
-# Add parent directory to path to import main
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from main import get_ml_models
 
 router = APIRouter()
 
@@ -33,6 +27,9 @@ class AnomalyResult(BaseModel):
 async def detect_anomalies(request: BudgetAnalysisRequest):
     """Detect anomalies in financial transactions"""
     try:
+        # Import here to avoid circular import
+        from main import get_ml_models
+        
         models = get_ml_models()
         if "anomaly_detector" not in models:
             raise HTTPException(status_code=503, detail="Anomaly detection model not loaded")
@@ -40,7 +37,7 @@ async def detect_anomalies(request: BudgetAnalysisRequest):
         # Convert transactions to DataFrame
         df = pd.DataFrame([t.dict() for t in request.transactions])
         
-        # Feature engineering
+        # Feature engineering (FIXED)
         features = prepare_features(df)
         
         # Predict anomalies
@@ -65,23 +62,22 @@ async def detect_anomalies(request: BudgetAnalysisRequest):
         raise HTTPException(status_code=500, detail=f"Error detecting anomalies: {str(e)}")
 
 def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Prepare features for anomaly detection"""
+    """Prepare features for anomaly detection - FIXED VERSION"""
     features = pd.DataFrame()
     
-    # Amount-based features
+    # Use EXACT same features as training data
     features['amount'] = df['amount']
-    features['log_amount'] = np.log1p(df['amount'])
     
     # Department frequency
     dept_counts = df['department_id'].value_counts().to_dict()
-    features['department_frequency'] = df['department_id'].map(dept_counts)
+    features['department_id'] = df['department_id'].map(dept_counts)
     
     # Vendor frequency  
     vendor_counts = df['vendor_name'].value_counts().to_dict()
     features['vendor_frequency'] = df['vendor_name'].map(vendor_counts)
     
     # Time-based features (simplified)
-    features['hour_of_day'] = np.random.randint(0, 24, len(df))
+    features['time_of_day'] = np.random.randint(0, 24, len(df))
     
     return features
 

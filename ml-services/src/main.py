@@ -6,11 +6,6 @@ from sklearn.ensemble import IsolationForest
 import pickle
 import os
 
-# Import API routes
-from api.anomaly import router as anomaly_router
-from api.voice import router as voice_router
-from api.health import router as health_router
-
 # Global ML models storage
 ml_models = {}
 
@@ -49,7 +44,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include API routes
+# Make models accessible to other modules
+def get_ml_models():
+    return ml_models
+
+# Import and include routers AFTER defining get_ml_models
+from api.anomaly import router as anomaly_router
+from api.voice import router as voice_router
+from api.health import router as health_router
+
 app.include_router(anomaly_router, prefix="/api/anomaly", tags=["Anomaly Detection"])
 app.include_router(voice_router, prefix="/api/voice", tags=["Voice Processing"])
 app.include_router(health_router, prefix="/api/health", tags=["Health"])
@@ -62,10 +65,6 @@ async def root():
         "models_loaded": list(ml_models.keys()),
         "version": "1.0.0"
     }
-
-# Make models accessible to other modules
-def get_ml_models():
-    return ml_models
 
 if __name__ == "__main__":
     import uvicorn
