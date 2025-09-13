@@ -208,3 +208,5 @@ local/
 .env.local
 .env.production
 .env.staging
+
+.gitignore
