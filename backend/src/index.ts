@@ -4,7 +4,9 @@ import cookieParser from 'cookie-parser';
 //imports
 import authRoutes from './routes/authRoutes.js';
 import budgetRoutes from './routes/budgetRoutes.js'
-import departmentRoutes from './routes/departmentRoutes.js'
+import departmentRoutes from './routes/departmentRoutes.js';
+import projectRoutes from './routes/projectRoutes.js';
+import vendorRoutes from './routes/vendorRoutes.js';
 
 const app = express();
 
@@ -14,7 +16,9 @@ app.use(express.json());
 //routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/budgets', budgetRoutes);
-app.use('/api/v1/departments',departmentRoutes)
+app.use('/api/v1/departments',departmentRoutes);
+app.use('/api/v1/projects', projectRoutes);
+app.use('/api/v1/vendors', vendorRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
