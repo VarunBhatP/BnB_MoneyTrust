@@ -5,7 +5,7 @@ import { notifyNewBudget } from '../utils/dashboardBroadcaster.js';
 
 export const getAllBudgets = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = parseInt((req as any).userId); // Convert to number
 
     const budgets = await prisma.budget.findMany({
       where: { userId },
@@ -16,7 +16,7 @@ export const getAllBudgets = async (req: Request, res: Response) => {
               include: {
                 vendors: {
                   include: {
-                    transactions: true
+                    transaction: true // Changed from 'transactions' to 'transaction'
                   }
                 }
               }
@@ -42,7 +42,7 @@ export const getAllBudgets = async (req: Request, res: Response) => {
 export const createBudget = async (req: Request, res: Response) => {
   try {
     const { name } = req.body;
-    const userId = (req as any).userId;
+    const userId = parseInt((req as any).userId); // Convert to number
 
     if (!name) {
       return res.status(StatusCodes.BAD_REQUEST).json({
@@ -73,11 +73,11 @@ export const createBudget = async (req: Request, res: Response) => {
 export const getBudgetById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).userId;
+    const userId = parseInt((req as any).userId); // Convert to number
 
     const budget = await prisma.budget.findFirst({
       where: { 
-        id,
+        id: parseInt(id), // Convert to number
         userId 
       },
       include: {
@@ -87,7 +87,7 @@ export const getBudgetById = async (req: Request, res: Response) => {
               include: {
                 vendors: {
                   include: {
-                    transactions: true
+                    transaction: true // Changed from 'transactions' to 'transaction'
                   }
                 }
               }
@@ -117,10 +117,13 @@ export const updateBudget = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
-    const userId = (req as any).userId;
+    const userId = parseInt((req as any).userId); // Convert to number
 
     const budget = await prisma.budget.findFirst({
-      where: { id, userId }
+      where: { 
+        id: parseInt(id), // Convert to number
+        userId 
+      }
     });
 
     if (!budget) {
@@ -130,7 +133,7 @@ export const updateBudget = async (req: Request, res: Response) => {
     }
 
     const updatedBudget = await prisma.budget.update({
-      where: { id },
+      where: { id: parseInt(id) }, // Convert to number
       data: { name }
     });
 
@@ -147,10 +150,13 @@ export const updateBudget = async (req: Request, res: Response) => {
 export const deleteBudget = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).userId;
+    const userId = parseInt((req as any).userId); // Convert to number
 
     const budget = await prisma.budget.findFirst({
-      where: { id, userId }
+      where: { 
+        id: parseInt(id), // Convert to number
+        userId 
+      }
     });
 
     if (!budget) {
@@ -160,7 +166,7 @@ export const deleteBudget = async (req: Request, res: Response) => {
     }
 
     await prisma.budget.delete({
-      where: { id }
+      where: { id: parseInt(id) } // Convert to number
     });
 
     res.status(StatusCodes.NO_CONTENT).send();
@@ -175,19 +181,19 @@ export const deleteBudget = async (req: Request, res: Response) => {
 
 export const addFeedback = async (req: Request, res: Response) => {
   try {
-    const { budgetId, feedback, rating } = req.body;
-    const userId = (req as any).userId;
+    const { budgetId, message, rating } = req.body; // Changed 'feedback' to 'message'
+    const userId = parseInt((req as any).userId); // Convert to number
 
-    if (!budgetId || !feedback) {
+    if (!budgetId || !message) {
       return res.status(StatusCodes.BAD_REQUEST).json({
-        message: 'Budget ID and feedback are required'
+        message: 'Budget ID and message are required'
       });
     }
 
     const newFeedback = await prisma.feedback.create({
       data: {
-        budgetId,
-        feedback,
+        budgetId: parseInt(budgetId), // Convert to number
+        message, // Use 'message' instead of 'feedback'
         rating: rating || 0,
         userId
       }
@@ -206,11 +212,11 @@ export const addFeedback = async (req: Request, res: Response) => {
 export const getFeedback = async (req: Request, res: Response) => {
   try {
     const { budgetId } = req.params;
-    const userId = (req as any).userId;
+    const userId = parseInt((req as any).userId); // Convert to number
 
     const feedback = await prisma.feedback.findMany({
       where: { 
-        budgetId,
+        budgetId: parseInt(budgetId), // Convert to number
         userId 
       },
       orderBy: {

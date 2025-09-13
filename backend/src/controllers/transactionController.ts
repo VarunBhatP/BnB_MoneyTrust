@@ -7,7 +7,7 @@ import { notifyNewTransaction, notifyAnomaly } from '../utils/dashboardBroadcast
 export const createTransaction = async (req: Request, res: Response) => {
   try {
     const { amount, vendorId, description, date } = req.body;
-    const userId = (req as any).userId;
+    const userId = parseInt((req as any).userId); // Convert to number
 
     // Validate required fields
     if (!amount || !vendorId) {
@@ -18,7 +18,7 @@ export const createTransaction = async (req: Request, res: Response) => {
 
     // Get vendor details for AI analysis
     const vendor = await prisma.vendor.findUnique({
-      where: { id: vendorId },
+      where: { id: parseInt(vendorId) }, // Convert to number
       include: {
         project: {
           include: {
@@ -40,7 +40,7 @@ export const createTransaction = async (req: Request, res: Response) => {
         amount: parseFloat(amount),
         description: description || null,
         date: date ? new Date(date) : new Date(),
-        vendorId,
+        vendorId: parseInt(vendorId), // Convert to number
       },
       include: {
         vendor: {
@@ -60,7 +60,7 @@ export const createTransaction = async (req: Request, res: Response) => {
     try {
       const aiPayload = {
         amount: transaction.amount,
-        department_id: parseInt(vendor.project.department.id),
+        department_id: vendor.project.department.id, // Already a number
         vendor_name: vendor.name,
         transaction_date: transaction.date.toISOString().split('T')[0]
       };
@@ -102,7 +102,7 @@ export const createTransaction = async (req: Request, res: Response) => {
 
 export const getAllTransactions = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = parseInt((req as any).userId); // Convert to number
 
     const transactions = await prisma.transaction.findMany({
       include: {
@@ -138,10 +138,10 @@ export const getAllTransactions = async (req: Request, res: Response) => {
 export const getTransactionById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).userId;
+    const userId = parseInt((req as any).userId); // Convert to number
 
     const transaction = await prisma.transaction.findUnique({
-      where: { id },
+      where: { id: parseInt(id) }, // Convert to number
       include: {
         vendor: {
           include: {
@@ -179,10 +179,10 @@ export const updateTransaction = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { amount, description, date } = req.body;
-    const userId = (req as any).userId;
+    const userId = parseInt((req as any).userId); // Convert to number
 
     const transaction = await prisma.transaction.findUnique({
-      where: { id }
+      where: { id: parseInt(id) } // Convert to number
     });
 
     if (!transaction) {
@@ -192,7 +192,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
     }
 
     const updatedTransaction = await prisma.transaction.update({
-      where: { id },
+      where: { id: parseInt(id) }, // Convert to number
       data: {
         amount: amount ? parseFloat(amount) : undefined,
         description: description !== undefined ? description : undefined,
@@ -224,10 +224,10 @@ export const updateTransaction = async (req: Request, res: Response) => {
 export const deleteTransaction = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).userId;
+    const userId = parseInt((req as any).userId); // Convert to number
 
     const transaction = await prisma.transaction.findUnique({
-      where: { id }
+      where: { id: parseInt(id) } // Convert to number
     });
 
     if (!transaction) {
@@ -237,7 +237,7 @@ export const deleteTransaction = async (req: Request, res: Response) => {
     }
 
     await prisma.transaction.delete({
-      where: { id }
+      where: { id: parseInt(id) } // Convert to number
     });
 
     res.status(StatusCodes.NO_CONTENT).send();
