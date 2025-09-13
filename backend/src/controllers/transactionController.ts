@@ -1,6 +1,8 @@
 import type{ Request, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { StatusCodes } from 'http-status-codes';
+import { broadcast } from '../index.js';
+import { broadcastDashboardSummary } from '../utils/dashboardBroadcaster.js';
 
 export const createTransaction = async (req: Request, res: Response) => {
   try {
@@ -28,7 +30,8 @@ export const createTransaction = async (req: Request, res: Response) => {
         vendorId,
       },
     });
-
+    broadcast({ type: 'transaction_created', payload: transaction });
+    await broadcastDashboardSummary();
     res.status(StatusCodes.CREATED).json(transaction);
   } catch (error) {
     console.error(error);
@@ -118,7 +121,8 @@ export const updateTransaction = async (req: Request, res: Response) => {
         
       },
     });
-
+    broadcast({ type: 'transaction_updated', payload: updatedTransaction });
+    await broadcastDashboardSummary();
     res.json(updatedTransaction);
   } catch (error) {
     console.error(error);
@@ -145,7 +149,9 @@ export const deleteTransaction = async (req: Request, res: Response) => {
     }
 
     await prisma.transaction.delete({ where: { id } });
-    res.status(StatusCodes.NO_CONTENT).send();
+    broadcast({ type: 'transaction_deleted', payload: { id } });
+    await broadcastDashboardSummary();
+    res.status(StatusCodes.NO_CONTENT).json({message:"Deleted Transaction"});
   } catch (error) {
     console.error(error);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Failed to delete transaction' });
