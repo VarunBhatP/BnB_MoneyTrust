@@ -1,0 +1,28 @@
+{
+  "institution": "Springfield University",
+  "fiscal_year": 2024,
+  "total_budget": 14800000,
+  "transactions": [
+    {
+      "amount": 1500.00,
+      "department_id": 1,
+      "vendor_name": "Office Supplies Inc",
+      "transaction_date": "2024-01-15",
+      "description": "Monthly office supplies"
+    },
+    {
+      "amount": 75000.00,
+      "department_id": 1,
+      "vendor_name": "Suspicious Vendor LLC", 
+      "transaction_date": "2024-01-16",
+      "description": "Equipment purchase"
+    },
+    {
+      "amount": 800.00,
+      "department_id": 2,
+      "vendor_name": "Regular Vendor Co",
+      "transaction_date": "2024-01-17",
+      "description": "Regular service"
+    }
+  ]
+}
