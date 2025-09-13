@@ -7,7 +7,7 @@ import budgetRoutes from './routes/budgetRoutes.js';
 
 const app = express();
 
-// CORS Configuration - COMPLETE FIX
+// CORS Configuration - FIXED
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc.)
@@ -16,7 +16,7 @@ app.use(cors({
     const allowedOrigins = [
       'http://localhost:3000',
       'http://127.0.0.1:3000',
-      'https://your-frontend-domain.vercel.app' // Add when deploying
+      'https://your-frontend-domain.vercel.app'
     ];
     
     if (allowedOrigins.includes(origin)) {
@@ -40,8 +40,8 @@ app.use(cors({
   exposedHeaders: ['Authorization']
 }));
 
-// Handle preflight requests
-app.options('*', cors());
+// REMOVE THIS PROBLEMATIC LINE:
+// app.options('*', cors()); // <-- This causes the error
 
 // Additional CORS headers middleware
 app.use((req, res, next) => {
@@ -73,6 +73,14 @@ app.get('/', (req, res) => {
     status: 'running',
     timestamp: new Date().toISOString(),
     cors: 'enabled'
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    message: 'Route not found',
+    path: req.originalUrl
   });
 });
 
