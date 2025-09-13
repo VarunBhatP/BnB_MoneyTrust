@@ -7,6 +7,8 @@ import budgetRoutes from './routes/budgetRoutes.js'
 import departmentRoutes from './routes/departmentRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
+import transactionRoutes from './routes/transactionRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
 
 const app = express();
 
@@ -19,6 +21,8 @@ app.use('/api/v1/budgets', budgetRoutes);
 app.use('/api/v1/departments',departmentRoutes);
 app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/vendors', vendorRoutes);
+app.use('/api/v1/transactions', transactionRoutes);
+app.use('/api/v1/uploads', uploadRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

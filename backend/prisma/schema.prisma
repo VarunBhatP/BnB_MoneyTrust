@@ -47,5 +47,15 @@ model Vendor {
   name      String
   project   Project  @relation(fields: [projectId], references: [id])
   projectId Int
+  transaction Transaction[]
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  amount      Float
+  description String?
+  date        DateTime @default(now())
+  vendor      Vendor   @relation(fields: [vendorId], references: [id])
+  vendorId    Int
 }
 
