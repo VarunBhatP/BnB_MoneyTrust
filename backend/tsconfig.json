@@ -42,5 +42,13 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
+
+    "lib": ["ES2020"],
+    
+    "allowSyntheticDefaultImports": true,
+    
+    "noImplicitAny": false,
+    
+    "forceConsistentCasingInFileNames": true
   }
 }

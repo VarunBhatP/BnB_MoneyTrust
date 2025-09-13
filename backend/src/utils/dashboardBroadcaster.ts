@@ -21,12 +21,12 @@ export const broadcastDashboardSummary = async () => {
     },
   });
 
-  const summary = budgets.map((budget) => {
+const summary = budgets.map((budget: any) => {
     let totalAmount = 0;
     for (const dept of budget.departments) {
       for (const proj of dept.projects) {
         for (const vendor of proj.vendors) {
-          totalAmount += vendor.transaction.reduce((acc, t) => acc + t.amount, 0);
+          totalAmount += vendor.transaction.reduce((acc: number, t: any) => acc + t.amount,0);
         }
       }
     }
