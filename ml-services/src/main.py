@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import pandas as pd
 import numpy as np
 from sklearn.ensemble import IsolationForest
 import pickle
@@ -10,16 +9,20 @@ import os
 ml_models = {}
 
 def create_anomaly_model():
-    """Create basic anomaly detection model"""
-    # Sample training data
-    sample_data = pd.DataFrame({
-        'amount': [100, 200, 150, 50000, 300, 250, 180, 90000, 220],
-        'department_id': [1, 2, 1, 3, 2, 1, 2, 3, 1],
-        'vendor_frequency': [10, 5, 8, 1, 6, 9, 4, 1, 7],
-        'time_of_day': [9, 14, 10, 23, 11, 15, 16, 2, 13]
-    })
+    """Create basic anomaly detection model - NO PANDAS"""
+    # Use numpy arrays instead of pandas DataFrame
+    sample_data = np.array([
+        [100, 1, 10, 9],      # amount, department_id, vendor_frequency, time_of_day
+        [200, 2, 5, 14],
+        [150, 1, 8, 10],
+        [50000, 3, 1, 23],    # Anomaly
+        [300, 2, 6, 11],
+        [250, 1, 9, 15],
+        [180, 2, 4, 16],
+        [90000, 3, 1, 2],     # Anomaly
+        [220, 1, 7, 13]
+    ])
     
-    # Train Isolation Forest model
     model = IsolationForest(contamination=0.1, random_state=42)
     model.fit(sample_data)
     return model
