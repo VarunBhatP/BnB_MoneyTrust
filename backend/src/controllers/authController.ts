@@ -3,9 +3,8 @@ import { prisma } from "../utils/prisma.js";
 import { StatusCodes } from "http-status-codes";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import {JWT_SECRET,JWT_EXPIRE} from '../utils/jwtExport.js'
 
-const JWT_SECRET: string = process.env.JWT_SECRET as string;
-const JWT_EXPIRE: any = process.env.JWT_EXPIRE;
 
 export const signup = async (req: Request, res: Response) => {
   try {
