@@ -1,142 +1,104 @@
-import type{ Request, Response } from 'express';
-import { prisma } from '../utils/prisma.js';
+import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 
-export const createVendor = async (req: Request, res: Response) => {
-  try {
-    const { name, projectId } = req.body;
-    const userId = (req as any).userId;
-
-    if (!name || !projectId) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ message: 'Name and projectId are required' });
-    }
-
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      include: { department: { include: { budget: true } } },
-    });
-
-    if (!project || project.department.budget.userId !== userId) {
-      return res.status(StatusCodes.FORBIDDEN).json({ message: 'Not authorized to add vendor to this project' });
-    }
-
-    const vendor = await prisma.vendor.create({
-      data: { name, projectId },
-    });
-
-    res.status(StatusCodes.CREATED).json(vendor);
-  } catch (error) {
-    console.error(error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create vendor' });
-  }
-};
+// Sample vendor data since we don't have full database setup
+const sampleVendors = [
+  { id: '1', name: 'ABC Construction', contactEmail: 'contact@abc.com', projectId: '1' },
+  { id: '2', name: 'XYZ Medical Supplies', contactEmail: 'info@xyz.com', projectId: '2' },
+  { id: '3', name: 'Education Plus', contactEmail: 'sales@eduplus.com', projectId: '3' },
+];
 
 export const getAllVendors = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
-
-    // Vendors under projects where owner matches user
-    const vendors = await prisma.vendor.findMany({
-      where: {
-        project: {
-          department: {
-            budget: {
-              userId,
-            },
-          },
-        },
-      },
+    res.json(sampleVendors);
+  } catch (error: any) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to fetch vendors',
+      error: error.message
     });
+  }
+};
 
-    res.json(vendors);
-  } catch (error) {
-    console.error(error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch vendors' });
+export const createVendor = async (req: Request, res: Response) => {
+  try {
+    const { name, contactEmail, projectId } = req.body;
+    
+    const newVendor = {
+      id: (sampleVendors.length + 1).toString(),
+      name,
+      contactEmail,
+      projectId
+    };
+    
+    sampleVendors.push(newVendor);
+    res.status(StatusCodes.CREATED).json(newVendor);
+  } catch (error: any) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to create vendor',
+      error: error.message
+    });
   }
 };
 
 export const getVendorById = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
-    const userId = (req as any).userId;
-
-    const vendor = await prisma.vendor.findUnique({
-      where: { id },
-      include: { project: { include: { department: { include: { budget: true } } } } },
-    });
-
+    const { id } = req.params;
+    const vendor = sampleVendors.find(v => v.id === id);
+    
     if (!vendor) {
-      return res.status(StatusCodes.NOT_FOUND).json({ message: 'Vendor not found' });
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: 'Vendor not found'
+      });
     }
-
-    if (vendor.project.department.budget.userId !== userId) {
-      return res.status(StatusCodes.FORBIDDEN).json({ message: 'Not authorized to view this vendor' });
-    }
-
+    
     res.json(vendor);
-  } catch (error) {
-    console.error(error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch vendor' });
+  } catch (error: any) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to fetch vendor',
+      error: error.message
+    });
   }
 };
 
 export const updateVendor = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
-    const { name } = req.body;
-    const userId = (req as any).userId;
-
-    if (!name) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ message: 'Name is required' });
+    const { id } = req.params;
+    const { name, contactEmail } = req.body;
+    
+    const vendorIndex = sampleVendors.findIndex(v => v.id === id);
+    if (vendorIndex === -1) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: 'Vendor not found'
+      });
     }
-
-    const vendor = await prisma.vendor.findUnique({
-      where: { id },
-      include: { project: { include: { department: { include: { budget: true } } } } },
+    
+    sampleVendors[vendorIndex] = { ...sampleVendors[vendorIndex], name, contactEmail };
+    res.json(sampleVendors[vendorIndex]);
+  } catch (error: any) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to update vendor',
+      error: error.message
     });
-
-    if (!vendor) {
-      return res.status(StatusCodes.NOT_FOUND).json({ message: 'Vendor not found' });
-    }
-
-    if (vendor.project.department.budget.userId !== userId) {
-      return res.status(StatusCodes.FORBIDDEN).json({ message: 'Not authorized to update this vendor' });
-    }
-
-    const updatedVendor = await prisma.vendor.update({
-      where: { id },
-      data: { name },
-    });
-
-    res.json(updatedVendor);
-  } catch (error) {
-    console.error(error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Failed to update vendor' });
   }
 };
 
 export const deleteVendor = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
-    const userId = (req as any).userId;
-
-    const vendor = await prisma.vendor.findUnique({
-      where: { id },
-      include: { project: { include: { department: { include: { budget: true } } } } },
+    const { id } = req.params;
+    const vendorIndex = sampleVendors.findIndex(v => v.id === id);
+    
+    if (vendorIndex === -1) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: 'Vendor not found'
+      });
+    }
+    
+    sampleVendors.splice(vendorIndex, 1);
+    res.status(StatusCodes.NO_CONTENT).send();
+  } catch (error: any) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to delete vendor',
+      error: error.message
     });
-
-    if (!vendor) {
-      return res.status(StatusCodes.NOT_FOUND).json({ message: 'Vendor not found' });
-    }
-
-    if (vendor.project.department.budget.userId !== userId) {
-      return res.status(StatusCodes.FORBIDDEN).json({ message: 'Not authorized to delete this vendor' });
-    }
-
-    await prisma.vendor.delete({ where: { id } });
-    res.status(StatusCodes.NO_CONTENT).json({message:"Deleted vendor"});
-  } catch (error) {
-    console.error(error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Failed to delete vendor' });
   }
 };

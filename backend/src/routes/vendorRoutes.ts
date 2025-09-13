@@ -1,18 +1,22 @@
-import { Router } from 'express';
+import express from 'express';
 import {
-  createVendor,
   getAllVendors,
+  createVendor,
   getVendorById,
   updateVendor,
-  deleteVendor,
+  deleteVendor
 } from '../controllers/vendorController.js';
-import {authenticateToken} from '../middleware/authMiddleware.js'
-const router:Router = Router();
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
-router.post('/', authenticateToken,createVendor);
-router.get('/', authenticateToken,getAllVendors);
-router.get('/:id', authenticateToken,getVendorById);
-router.put('/:id', authenticateToken,updateVendor);
-router.delete('/:id', authenticateToken,deleteVendor);
+const router = express.Router();
+
+// Protect all vendor routes
+router.use(authMiddleware);
+
+router.get('/', getAllVendors);
+router.post('/', createVendor);
+router.get('/:id', getVendorById);
+router.put('/:id', updateVendor);
+router.delete('/:id', deleteVendor);
 
 export default router;

@@ -1,21 +1,22 @@
-import { Router } from 'express';
+import express from 'express';
 import {
-  createDepartment,
   getAllDepartments,
+  createDepartment,
   getDepartmentById,
   updateDepartment,
-  deleteDepartment,
+  deleteDepartment
 } from '../controllers/departmentController.js';
-import {authenticateToken} from '../middleware/authMiddleware.js'
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
+const router = express.Router();
 
+// Protect all department routes
+router.use(authMiddleware);
 
-const router:Router = Router();
-
-router.post('/', authenticateToken,createDepartment);
-router.get('/', authenticateToken,getAllDepartments);
-router.get('/:id', authenticateToken,getDepartmentById);
-router.put('/:id', authenticateToken,updateDepartment);
-router.delete('/:id', authenticateToken,deleteDepartment);
+router.get('/', getAllDepartments);
+router.post('/', createDepartment);
+router.get('/:id', getDepartmentById);
+router.put('/:id', updateDepartment);
+router.delete('/:id', deleteDepartment);
 
 export default router;

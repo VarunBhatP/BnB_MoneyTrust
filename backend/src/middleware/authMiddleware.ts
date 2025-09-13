@@ -1,34 +1,42 @@
-import type { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { StatusCodes} from "http-status-codes";
-import { JWT_EXPIRE, JWT_SECRET } from "../utils/jwtExport.js";
+import { StatusCodes } from 'http-status-codes';
 
-interface JwtPayload{
-    userId:number;
-}
+const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key';
 
-export const authorizeRoles = (...allowedRoles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const userRole = (req as any).user?.role; // Assuming user is attached to req after auth
-
-    if (!userRole || !allowedRoles.includes(userRole)) {
-      return res.status(403).json({ message: 'You do not have permission to perform this action' });
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        message: 'No token provided'
+      });
     }
 
-    next();
-  };
-};
-
-export const authenticateToken= (req:Request, res:Response,next:NextFunction)=>{
-    const token = req.cookies.token || (req.headers.authorization && req.headers.authorization.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1]:null);
-    if(!token){
-        res.status(StatusCodes.UNAUTHORIZED).json({message:'Access token missing relogin again'});
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    
+    if (!token || token === 'undefined') {
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        message: 'Invalid token'
+      });
     }
+
     try {
-        const decoded = jwt.verify(token,JWT_SECRET) as JwtPayload;
-        (req as any).userId = decoded.userId;
-        next();
-    } catch (error) {
-        return res.status(StatusCodes.FORBIDDEN).json({ message: 'Invalid token' });
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      (req as any).userId = decoded.userId;
+      (req as any).userEmail = decoded.email;
+      next();
+    } catch (jwtError) {
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        message: 'Invalid or expired token'
+      });
     }
-}
+
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Authentication error'
+    });
+  }
+};
