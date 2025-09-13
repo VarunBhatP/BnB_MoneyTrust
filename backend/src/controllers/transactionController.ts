@@ -1,6 +1,9 @@
 import type{ Request, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { StatusCodes } from 'http-status-codes';
+import { aiService } from '../utils/aiService.js';
+// import { broadcast } from '../index.js';
+// TODO: Import broadcast from the correct module where it is exported, e.g.:
 import { broadcast } from '../index.js';
 import { broadcastDashboardSummary } from '../utils/dashboardBroadcaster.js';
 
@@ -30,6 +33,26 @@ export const createTransaction = async (req: Request, res: Response) => {
         vendorId,
       },
     });
+
+    // ---------------- AI anomaly detection integration ----------------
+    try {
+      const analysis = await aiService.detectAnomaly({
+        amount,
+        department_id: vendor.project.departmentId,
+        vendor_name: vendor.name,
+        transaction_date: date ?? new Date().toISOString().split('T')[0],
+      });
+
+      Object.assign(transaction, {
+        riskScore: analysis.anomaly_score,
+        isAnomalous: analysis.is_anomaly,
+        anomalyDetail: analysis,
+      });
+    } catch (aiErr) {
+      console.error('AI anomaly detection failed', aiErr);
+      // Proceed without blocking core transaction flow
+    }
+
     broadcast({ type: 'transaction_created', payload: transaction });
     await broadcastDashboardSummary();
     res.status(StatusCodes.CREATED).json(transaction);

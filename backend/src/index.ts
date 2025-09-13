@@ -1,9 +1,9 @@
-import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
 import express from 'express';
 import multer from 'multer';
 import type { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
+import http from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
 
 // imports
 import authRoutes from './routes/authRoutes.js';
@@ -13,6 +13,7 @@ import projectRoutes from './routes/projectRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 const app = express();
 
@@ -27,30 +28,30 @@ app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/vendors', vendorRoutes);
 app.use('/api/v1/transactions', transactionRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
+app.use('/api/v1/ai', aiRoutes); // added AI route
 
-// multer error handling middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ message: 'File size exceeds the allowed limit' });
-    }
-    return res.status(400).json({ message: err.message });
-  }
-  next(err);
-});
+const PORT = process.env.PORT || 3000;
 
+// Create HTTP server wrapping Express app
 const server = http.createServer(app);
+
+// Create WebSocket server attached to HTTP server
 const wss = new WebSocketServer({ server });
+
+// Connected clients set
 const clients = new Set<WebSocket>();
 
 wss.on('connection', (ws) => {
   clients.add(ws);
+  console.log('New WebSocket client connected');
 
   ws.on('close', () => {
     clients.delete(ws);
+    console.log('WebSocket client disconnected');
   });
 });
 
+// Broadcast function to send messages to all connected clients
 function broadcast(data: any) {
   const message = JSON.stringify(data);
   for (const client of clients) {
@@ -61,8 +62,6 @@ function broadcast(data: any) {
 }
 
 export { broadcast };
-
-const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);

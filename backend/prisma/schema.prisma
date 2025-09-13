@@ -57,5 +57,10 @@ model Transaction {
   date        DateTime @default(now())
   vendor      Vendor   @relation(fields: [vendorId], references: [id])
   vendorId    Int
+
+  // AI Anomaly analysis
+  riskScore     Float?
+  isAnomalous   Boolean? @default(false)
+  anomalyDetail Json?
 }
 
