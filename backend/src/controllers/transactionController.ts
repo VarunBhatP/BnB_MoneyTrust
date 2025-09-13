@@ -1,6 +1,7 @@
 import type{ Request, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
 import { StatusCodes } from 'http-status-codes';
+import { aiService } from '../utils/aiService.js';
 
 export const createTransaction = async (req: Request, res: Response) => {
   try {
@@ -28,6 +29,25 @@ export const createTransaction = async (req: Request, res: Response) => {
         vendorId,
       },
     });
+
+    // ---------------- AI anomaly detection integration ----------------
+    try {
+      const analysis = await aiService.detectAnomaly({
+        amount,
+        department_id: vendor.project.departmentId,
+        vendor_name: vendor.name,
+        transaction_date: date ?? new Date().toISOString().split('T')[0],
+      });
+
+      Object.assign(transaction, {
+        riskScore: analysis.anomaly_score,
+        isAnomalous: analysis.is_anomaly,
+        anomalyDetail: analysis,
+      });
+    } catch (aiErr) {
+      console.error('AI anomaly detection failed', aiErr);
+      // Proceed without blocking core transaction flow
+    }
 
     res.status(StatusCodes.CREATED).json(transaction);
   } catch (error) {

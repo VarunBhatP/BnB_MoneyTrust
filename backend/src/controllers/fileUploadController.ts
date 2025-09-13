@@ -46,7 +46,7 @@ export const uploadBudgetData = async (req: Request, res: Response) => {
 
     // Increase timeout to 30 seconds to prevent timeout error on large files
     await prisma.$transaction(
-      async (tx) => {
+      async (tx: typeof prisma) => {
         for (const row of rows) {
           // Validate required fields
           if (!row.budgetName || !row.departmentName || !row.projectName || !row.vendorName || !row.amount) {

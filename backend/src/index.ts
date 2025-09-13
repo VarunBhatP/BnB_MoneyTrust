@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 
@@ -9,6 +10,7 @@ import projectRoutes from './routes/projectRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 const app = express();
 
@@ -23,6 +25,7 @@ app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/vendors', vendorRoutes);
 app.use('/api/v1/transactions', transactionRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
+app.use('/api/v1/ai', aiRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
