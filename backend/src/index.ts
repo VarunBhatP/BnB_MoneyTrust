@@ -4,7 +4,7 @@ import type { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-
+import cors from 'cors'
 
 // imports
 import authRoutes from './routes/authRoutes.js';
@@ -18,6 +18,7 @@ import aiRoutes from './routes/aiRoutes.js';
 
 const app = express();
 
+app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
