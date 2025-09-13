@@ -1,37 +1,50 @@
-import { prisma } from './prisma.js';
-import { broadcast } from '../index.js';
+// Simple notification utility (replace the broadcast functionality)
+interface NotificationData {
+  type: 'transaction' | 'budget' | 'anomaly';
+  data: any;
+  timestamp: Date;
+}
 
-export const broadcastDashboardSummary = async () => {
-  // Aggregate total expenses per budget, as an example
-  const budgets = await prisma.budget.findMany({
-    include: {
-      departments: {
-        include: {
-          projects: {
-            include: {
-              vendors: {
-                include: {
-                  transaction: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
+class DashboardBroadcaster {
+  private notifications: NotificationData[] = [];
 
-const summary = budgets.map((budget: any) => {
-    let totalAmount = 0;
-    for (const dept of budget.departments) {
-      for (const proj of dept.projects) {
-        for (const vendor of proj.vendors) {
-          totalAmount += vendor.transaction.reduce((acc: number, t: any) => acc + t.amount,0);
-        }
-      }
+  public addNotification(type: NotificationData['type'], data: any) {
+    const notification: NotificationData = {
+      type,
+      data,
+      timestamp: new Date()
+    };
+    
+    this.notifications.push(notification);
+    
+    // Keep only last 100 notifications
+    if (this.notifications.length > 100) {
+      this.notifications = this.notifications.slice(-100);
     }
-    return { budgetId: budget.id, budgetName: budget.name, totalAmount };
-  });
+    
+    console.log(`Dashboard notification: ${type}`, data);
+  }
 
-  broadcast({ type: 'dashboard_summary_updated', payload: summary });
+  public getRecentNotifications(limit: number = 10): NotificationData[] {
+    return this.notifications.slice(-limit);
+  }
+
+  public clearNotifications() {
+    this.notifications = [];
+  }
+}
+
+export const dashboardBroadcaster = new DashboardBroadcaster();
+
+// Helper functions
+export const notifyNewTransaction = (transaction: any) => {
+  dashboardBroadcaster.addNotification('transaction', transaction);
+};
+
+export const notifyNewBudget = (budget: any) => {
+  dashboardBroadcaster.addNotification('budget', budget);
+};
+
+export const notifyAnomaly = (anomaly: any) => {
+  dashboardBroadcaster.addNotification('anomaly', anomaly);
 };

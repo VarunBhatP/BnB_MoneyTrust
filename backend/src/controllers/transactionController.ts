@@ -1,64 +1,102 @@
-import type{ Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { StatusCodes } from 'http-status-codes';
 import { aiService } from '../utils/aiService.js';
-// import { broadcast } from '../index.js';
-// TODO: Import broadcast from the correct module where it is exported, e.g.:
-import { broadcast } from '../index.js';
-import { broadcastDashboardSummary } from '../utils/dashboardBroadcaster.js';
+import { StatusCodes } from 'http-status-codes';
+import { notifyNewTransaction, notifyAnomaly } from '../utils/dashboardBroadcaster.js';
 
 export const createTransaction = async (req: Request, res: Response) => {
   try {
-    const { amount, description, date, vendorId } = req.body;
+    const { amount, vendorId, description, date } = req.body;
     const userId = (req as any).userId;
 
-    if (amount === undefined || vendorId === undefined) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ message: 'Amount and vendorId are required' });
+    // Validate required fields
+    if (!amount || !vendorId) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        message: 'Amount and vendor are required'
+      });
     }
 
-    
+    // Get vendor details for AI analysis
     const vendor = await prisma.vendor.findUnique({
       where: { id: vendorId },
-      include: { project: { include: { department: { include: { budget: true } } } } },
+      include: {
+        project: {
+          include: {
+            department: true
+          }
+        }
+      }
     });
 
-    if (!vendor || vendor.project.department.budget.userId !== userId) {
-      return res.status(StatusCodes.FORBIDDEN).json({ message: 'Not authorized to add transaction for this vendor' });
+    if (!vendor) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: 'Vendor not found'
+      });
     }
 
+    // Create transaction
     const transaction = await prisma.transaction.create({
       data: {
-        amount,
-        description,
+        amount: parseFloat(amount),
+        description: description || null,
+        date: date ? new Date(date) : new Date(),
         vendorId,
       },
+      include: {
+        vendor: {
+          include: {
+            project: {
+              include: {
+                department: true
+              }
+            }
+          }
+        }
+      }
     });
 
-    // ---------------- AI anomaly detection integration ----------------
+    // AI Analysis
+    let aiAnalysis = null;
     try {
-      const analysis = await aiService.detectAnomaly({
-        amount,
-        department_id: vendor.project.departmentId,
+      const aiPayload = {
+        amount: transaction.amount,
+        department_id: parseInt(vendor.project.department.id),
         vendor_name: vendor.name,
-        transaction_date: date ?? new Date().toISOString().split('T')[0],
-      });
+        transaction_date: transaction.date.toISOString().split('T')[0]
+      };
 
-      Object.assign(transaction, {
-        riskScore: analysis.anomaly_score,
-        isAnomalous: analysis.is_anomaly,
-        anomalyDetail: analysis,
-      });
-    } catch (aiErr) {
-      console.error('AI anomaly detection failed', aiErr);
-      // Proceed without blocking core transaction flow
+      aiAnalysis = await aiService.detectAnomaly(aiPayload);
+    } catch (aiError) {
+      console.log('AI analysis failed, continuing without it:', aiError);
     }
 
-    broadcast({ type: 'transaction_created', payload: transaction });
-    await broadcastDashboardSummary();
-    res.status(StatusCodes.CREATED).json(transaction);
-  } catch (error) {
-    console.error(error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create transaction' });
+    // Add AI analysis to response
+    const transactionResponse = {
+      ...transaction,
+      isAnomalous: aiAnalysis?.is_anomaly || false,
+      riskScore: aiAnalysis?.anomaly_score || 0,
+      anomalyDetail: aiAnalysis ? {
+        is_anomaly: aiAnalysis.is_anomaly,
+        anomaly_score: aiAnalysis.anomaly_score,
+        reasons: aiAnalysis.reasons || []
+      } : null
+    };
+
+    // Notify dashboard
+    notifyNewTransaction(transactionResponse);
+
+    // If anomaly detected, notify
+    if (aiAnalysis?.is_anomaly) {
+      notifyAnomaly(transactionResponse);
+    }
+
+    res.status(StatusCodes.CREATED).json(transactionResponse);
+  } catch (error: any) {
+    console.error('Error creating transaction:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to create transaction',
+      error: error.message
+    });
   }
 };
 
@@ -67,116 +105,147 @@ export const getAllTransactions = async (req: Request, res: Response) => {
     const userId = (req as any).userId;
 
     const transactions = await prisma.transaction.findMany({
-      where: {
+      include: {
         vendor: {
-          project: {
-            department: {
-              budget: {
-                userId,
-              },
-            },
-          },
-        },
+          include: {
+            project: {
+              include: {
+                department: {
+                  include: {
+                    budget: true
+                  }
+                }
+              }
+            }
+          }
+        }
       },
-      include: { vendor: true },
+      orderBy: {
+        date: 'desc'
+      }
     });
 
     res.json(transactions);
-  } catch (error) {
-    console.error(error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch transactions' });
+  } catch (error: any) {
+    console.error('Error fetching transactions:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to fetch transactions',
+      error: error.message
+    });
   }
 };
 
 export const getTransactionById = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
+    const { id } = req.params;
     const userId = (req as any).userId;
 
     const transaction = await prisma.transaction.findUnique({
       where: { id },
-      include: { vendor: { include: { project: { include: { department: { include: { budget: true } } } } } } },
+      include: {
+        vendor: {
+          include: {
+            project: {
+              include: {
+                department: {
+                  include: {
+                    budget: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     });
 
     if (!transaction) {
-      return res.status(StatusCodes.NOT_FOUND).json({ message: 'Transaction not found' });
-    }
-
-    if (transaction.vendor.project.department.budget.userId !== userId) {
-      return res.status(StatusCodes.FORBIDDEN).json({ message: 'Not authorized to view this transaction' });
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: 'Transaction not found'
+      });
     }
 
     res.json(transaction);
-  } catch (error) {
-    console.error(error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch transaction' });
+  } catch (error: any) {
+    console.error('Error fetching transaction:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to fetch transaction',
+      error: error.message
+    });
   }
 };
 
 export const updateTransaction = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
+    const { id } = req.params;
     const { amount, description, date } = req.body;
     const userId = (req as any).userId;
 
-    if (amount === undefined) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ message: 'Amount is required' });
-    }
-
     const transaction = await prisma.transaction.findUnique({
-      where: { id },
-      include: { vendor: { include: { project: { include: { department: { include: { budget: true } } } } } } },
+      where: { id }
     });
 
     if (!transaction) {
-      return res.status(StatusCodes.NOT_FOUND).json({ message: 'Transaction not found' });
-    }
-
-    if (transaction.vendor.project.department.budget.userId !== userId) {
-      return res.status(StatusCodes.FORBIDDEN).json({ message: 'Not authorized to update this transaction' });
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: 'Transaction not found'
+      });
     }
 
     const updatedTransaction = await prisma.transaction.update({
       where: { id },
       data: {
-        amount,
-        description,
-        
+        amount: amount ? parseFloat(amount) : undefined,
+        description: description !== undefined ? description : undefined,
+        date: date ? new Date(date) : undefined,
       },
+      include: {
+        vendor: {
+          include: {
+            project: {
+              include: {
+                department: true
+              }
+            }
+          }
+        }
+      }
     });
-    broadcast({ type: 'transaction_updated', payload: updatedTransaction });
-    await broadcastDashboardSummary();
+
     res.json(updatedTransaction);
-  } catch (error) {
-    console.error(error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Failed to update transaction' });
+  } catch (error: any) {
+    console.error('Error updating transaction:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to update transaction',
+      error: error.message
+    });
   }
 };
 
 export const deleteTransaction = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
+    const { id } = req.params;
     const userId = (req as any).userId;
 
     const transaction = await prisma.transaction.findUnique({
-      where: { id },
-      include: { vendor: { include: { project: { include: { department: { include: { budget: true } } } } } } },
+      where: { id }
     });
 
     if (!transaction) {
-      return res.status(StatusCodes.NOT_FOUND).json({ message: 'Transaction not found' });
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: 'Transaction not found'
+      });
     }
 
-    if (transaction.vendor.project.department.budget.userId !== userId) {
-      return res.status(StatusCodes.FORBIDDEN).json({ message: 'Not authorized to delete this transaction' });
-    }
+    await prisma.transaction.delete({
+      where: { id }
+    });
 
-    await prisma.transaction.delete({ where: { id } });
-    broadcast({ type: 'transaction_deleted', payload: { id } });
-    await broadcastDashboardSummary();
-    res.status(StatusCodes.NO_CONTENT).json({message:"Deleted Transaction"});
-  } catch (error) {
-    console.error(error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Failed to delete transaction' });
+    res.status(StatusCodes.NO_CONTENT).send();
+  } catch (error: any) {
+    console.error('Error deleting transaction:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to delete transaction',
+      error: error.message
+    });
   }
 };

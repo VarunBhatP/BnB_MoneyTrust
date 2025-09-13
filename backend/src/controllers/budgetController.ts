@@ -1,14 +1,41 @@
-import type { Request, Response } from "express";
+import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma.js';
-import { StatusCodes } from "http-status-codes";
-import { broadcast } from '../index.js';
-import { broadcastDashboardSummary } from '../utils/dashboardBroadcaster.js';
+import { StatusCodes } from 'http-status-codes';
+import { notifyNewBudget } from '../utils/dashboardBroadcaster.js';
 
-const safeBroadcastDashboardSummary = async () => {
+export const getAllBudgets = async (req: Request, res: Response) => {
   try {
-    await broadcastDashboardSummary();
-  } catch (error) {
-    console.error('Error broadcasting dashboard summary:', error);
+    const userId = (req as any).userId;
+
+    const budgets = await prisma.budget.findMany({
+      where: { userId },
+      include: {
+        departments: {
+          include: {
+            projects: {
+              include: {
+                vendors: {
+                  include: {
+                    transactions: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.json(budgets);
+  } catch (error: any) {
+    console.error('Error fetching budgets:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to fetch budgets',
+      error: error.message
+    });
   }
 };
 
@@ -16,199 +43,187 @@ export const createBudget = async (req: Request, res: Response) => {
   try {
     const { name } = req.body;
     const userId = (req as any).userId;
+
     if (!name) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Name is required' });
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        message: 'Budget name is required'
+      });
     }
 
-    const budget = await prisma.budget.create({ data: { name, userId } });
-
-    try {
-      broadcast({ type: 'budget_created', payload: budget });
-      await safeBroadcastDashboardSummary();
-    } catch (broadcastError) {
-      console.error('Broadcast error:', broadcastError);
-    }
-
-    res.status(StatusCodes.CREATED).json({ success: true, data: budget });
-  } catch (error) {
-    console.error('Create budget error:', error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to create budget' });
-  }
-};
-
-export const getAllBudgets = async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).userId;
-    const budgets = await prisma.budget.findMany({
-      where: { userId },
-      include: { departments: true },
+    const budget = await prisma.budget.create({
+      data: {
+        name,
+        userId
+      }
     });
-    res.json({ success: true, data: budgets });
-  } catch (error) {
-    console.error('Get all budgets error:', error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to fetch budgets' });
+
+    // Notify dashboard
+    notifyNewBudget(budget);
+
+    res.status(StatusCodes.CREATED).json(budget);
+  } catch (error: any) {
+    console.error('Error creating budget:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to create budget',
+      error: error.message
+    });
   }
 };
 
 export const getBudgetById = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
-    if (Number.isNaN(id)) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Invalid budget ID' });
-    }
-    const budget = await prisma.budget.findUnique({
-      where: { id },
+    const { id } = req.params;
+    const userId = (req as any).userId;
+
+    const budget = await prisma.budget.findFirst({
+      where: { 
+        id,
+        userId 
+      },
       include: {
         departments: {
           include: {
             projects: {
-              include: { vendors: true },
-            },
-          },
-        },
-      },
+              include: {
+                vendors: {
+                  include: {
+                    transactions: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     });
+
     if (!budget) {
-      return res.status(StatusCodes.NOT_FOUND).json({ success: false, message: 'Budget not found' });
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: 'Budget not found'
+      });
     }
-    res.json({ success: true, data: budget });
-  } catch (error) {
-    console.error('Get budget by ID error:', error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to fetch budget' });
+
+    res.json(budget);
+  } catch (error: any) {
+    console.error('Error fetching budget:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to fetch budget',
+      error: error.message
+    });
   }
 };
 
 export const updateBudget = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
-    if (Number.isNaN(id)) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Invalid budget ID' });
-    }
-
+    const { id } = req.params;
     const { name } = req.body;
-    if (!name) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Name is required' });
-    }
-
     const userId = (req as any).userId;
 
-    // Verify ownership
-    const existingBudget = await prisma.budget.findUnique({ where: { id } });
-    if (!existingBudget) {
-      return res.status(StatusCodes.NOT_FOUND).json({ success: false, message: 'Budget not found' });
-    }
-    if (existingBudget.userId !== userId) {
-      return res.status(StatusCodes.FORBIDDEN).json({ success: false, message: 'Not authorized to update this budget' });
-    }
-
-    const budget = await prisma.budget.update({
-      where: { id },
-      data: { name },
+    const budget = await prisma.budget.findFirst({
+      where: { id, userId }
     });
 
-    try {
-      broadcast({ type: 'budget_updated', payload: budget });
-      await safeBroadcastDashboardSummary();
-    } catch (broadcastError) {
-      console.error('Broadcast error:', broadcastError);
+    if (!budget) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: 'Budget not found'
+      });
     }
 
-    res.json({ success: true, data: budget });
-  } catch (error) {
-    console.error('Update budget error:', error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to update budget' });
+    const updatedBudget = await prisma.budget.update({
+      where: { id },
+      data: { name }
+    });
+
+    res.json(updatedBudget);
+  } catch (error: any) {
+    console.error('Error updating budget:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to update budget',
+      error: error.message
+    });
   }
 };
 
 export const deleteBudget = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
-    if (Number.isNaN(id)) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Invalid budget ID' });
-    }
-
+    const { id } = req.params;
     const userId = (req as any).userId;
 
-    // Verify ownership
-    const existingBudget = await prisma.budget.findUnique({ where: { id } });
-    if (!existingBudget) {
-      return res.status(StatusCodes.NOT_FOUND).json({ success: false, message: 'Budget not found' });
-    }
-    if (existingBudget.userId !== userId) {
-      return res.status(StatusCodes.FORBIDDEN).json({ success: false, message: 'Not authorized to delete this budget' });
-    }
+    const budget = await prisma.budget.findFirst({
+      where: { id, userId }
+    });
 
-    await prisma.budget.delete({ where: { id } });
-
-    try {
-      broadcast({ type: 'budget_deleted', payload: { id } });
-      await safeBroadcastDashboardSummary();
-    } catch (broadcastError) {
-      console.error('Broadcast error:', broadcastError);
+    if (!budget) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        message: 'Budget not found'
+      });
     }
 
-    res.status(StatusCodes.NO_CONTENT).json({ success: true, message: 'Deleted Budget' });
-  } catch (error) {
-    console.error('Delete budget error:', error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to delete budget' });
+    await prisma.budget.delete({
+      where: { id }
+    });
+
+    res.status(StatusCodes.NO_CONTENT).send();
+  } catch (error: any) {
+    console.error('Error deleting budget:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to delete budget',
+      error: error.message
+    });
   }
 };
 
 export const addFeedback = async (req: Request, res: Response) => {
   try {
-    if (!req.body) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Request body missing' });
+    const { budgetId, feedback, rating } = req.body;
+    const userId = (req as any).userId;
+
+    if (!budgetId || !feedback) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        message: 'Budget ID and feedback are required'
+      });
     }
 
-    const budgetId = Number(req.params.id);
-    if (isNaN(budgetId)) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Invalid budget id' });
-    }
-
-    const { comment } = req.body;
-    if (!comment || typeof comment !== 'string') {
-      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Comment text is required' });
-    }
-
-    const budgetExists = await prisma.budget.findUnique({ where: { id: budgetId } });
-    if (!budgetExists) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Budget does not exist' });
-    }
-
-    const userId = (req as any).userId || null;
-
-    const feedback = await prisma.feedback.create({
+    const newFeedback = await prisma.feedback.create({
       data: {
         budgetId,
-        userId,
-        comment,
-      },
+        feedback,
+        rating: rating || 0,
+        userId
+      }
     });
 
-    res.status(StatusCodes.CREATED).json({ success: true, data: feedback });
-  } catch (error) {
-    console.error('Add feedback error:', error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to add feedback' });
+    res.status(StatusCodes.CREATED).json(newFeedback);
+  } catch (error: any) {
+    console.error('Error adding feedback:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to add feedback',
+      error: error.message
+    });
   }
 };
 
-
 export const getFeedback = async (req: Request, res: Response) => {
   try {
-    const budgetId = Number(req.params.id);
-    if (Number.isNaN(budgetId)) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Invalid budget id' });
-    }
+    const { budgetId } = req.params;
+    const userId = (req as any).userId;
 
-    const feedbackList = await prisma.feedback.findMany({
-      where: { budgetId },
-      include: { user: { select: { id: true, email: true } } }, // optional user info
-      orderBy: { createdAt: 'desc' },
+    const feedback = await prisma.feedback.findMany({
+      where: { 
+        budgetId,
+        userId 
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
 
-    res.json({ success: true, data: feedbackList });
-  } catch (error) {
-    console.error('Get feedback error:', error);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Failed to fetch feedback' });
+    res.json(feedback);
+  } catch (error: any) {
+    console.error('Error fetching feedback:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: 'Failed to fetch feedback',
+      error: error.message
+    });
   }
 };
