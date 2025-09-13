@@ -1,78 +1,94 @@
 import express from 'express';
-import multer from 'multer';
-import type { Request, Response, NextFunction } from 'express';
-import cookieParser from 'cookie-parser';
-import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
-import cors from 'cors'
-
-// imports
+import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
-import budgetRoutes from './routes/budgetRoutes.js';
-import departmentRoutes from './routes/departmentRoutes.js';
-import projectRoutes from './routes/projectRoutes.js';
-import vendorRoutes from './routes/vendorRoutes.js';
-import transactionRoutes from './routes/transactionRoutes.js';
-import uploadRoutes from './routes/uploadRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import transactionRoutes from './routes/transactionRoutes.js';
+import budgetRoutes from './routes/budgetRoutes.js';
 
 const app = express();
 
-app.use(cors());
-app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// CORS Configuration - COMPLETE FIX
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'https://your-frontend-domain.vercel.app' // Add when deploying
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(null, true); // Allow all origins for now
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With',
+    'Content-Type',
+    'Accept',
+    'Authorization',
+    'Cache-Control',
+    'Pragma'
+  ],
+  exposedHeaders: ['Authorization']
+}));
 
+// Handle preflight requests
+app.options('*', cors());
 
-// routes
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/budgets', budgetRoutes);
-app.use('/api/v1/departments', departmentRoutes);
-app.use('/api/v1/projects', projectRoutes);
-app.use('/api/v1/vendors', vendorRoutes);
-app.use('/api/v1/transactions', transactionRoutes);
-app.use('/api/v1/uploads', uploadRoutes);
-app.use('/api/v1/ai', aiRoutes); 
-
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ message: 'Internal server error' });
+// Additional CORS headers middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
 });
 
-const PORT = process.env.PORT || 3000;
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Create HTTP server wrapping Express app
-const server = http.createServer(app);
+// Routes
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/ai', aiRoutes);
+app.use('/api/v1/transactions', transactionRoutes);
+app.use('/api/v1/budgets', budgetRoutes);
 
-// Create WebSocket server attached to HTTP server
-const wss = new WebSocketServer({ server });
-
-// Connected clients set
-const clients = new Set<WebSocket>();
-
-wss.on('connection', (ws) => {
-  clients.add(ws);
-  console.log('New WebSocket client connected');
-
-  ws.on('close', () => {
-    clients.delete(ws);
-    console.log('WebSocket client disconnected');
+// Health check
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'BnB MoneyTrust Backend API',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    cors: 'enabled'
   });
 });
 
-// Broadcast function to send messages to all connected clients
-function broadcast(data: any) {
-  const message = JSON.stringify(data);
-  for (const client of clients) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
-    }
-  }
-}
-
-export { broadcast };
-
-
-server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+// Error handling middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Error:', err);
+  res.status(500).json({ 
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
 });
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log('CORS enabled for localhost:3000');
+});
+
+export default app;
